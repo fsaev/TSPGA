@@ -18,6 +18,6 @@ struct node{
 };
 
 node_t create_node(void *data, int data_len);
-int link_graph_node(int index, char **data, int data_len);
+int link_nodes(node_t* from, node_t* to, float distance);
 
 #endif

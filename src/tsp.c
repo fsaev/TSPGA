@@ -25,10 +25,6 @@ int link_graph_node(int index, char **data, int data_len)
     n->links = malloc(sizeof(nvertex_t *) * data_len);
 
     for(int i = 0; i < data_len; i++){
-        nvertex_t* v = malloc(sizeof(nvertex_t));
-        v->link = nodes[i]; //
-        v->distance = atof(data[i]);
-        n->links[i] = v;
-        printf("Linked %s to %s with distance %2f\n\r", (char *) n->data, v->link->data, v->distance);
+        link_nodes(n, nodes[i], atof(data[i]));
     }
 }
