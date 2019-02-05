@@ -1,0 +1,23 @@
+#ifndef GRAPH_H
+#define GRAPH_H
+
+typedef struct nvertex nvertex_t;
+typedef struct node node_t;
+
+struct nvertex{
+    node_t* link;
+    float distance;
+};
+
+struct node{
+    void *data;
+    int data_len;
+
+    nvertex_t** links;
+    int link_count;
+};
+
+node_t create_node(void *data, int data_len);
+int link_graph_node(int index, char **data, int data_len);
+
+#endif
