@@ -8,6 +8,8 @@ set (
    ./src/graph.c
    ./src/tsp.c
    ./src/interface.c
+   ./src/bruteforce.c
+   ./src/permute.c
 )
 
 include_directories(inc)
