@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "interface.h"
+#include "bruteforce.h"
 
 void run_interface() {
     int print_menu = 1;
@@ -16,10 +17,11 @@ void run_interface() {
         printf("found %1c\n\r", selection);
         print_menu = 1;
         switch(selection){
-            case 1:
-                //apply_bruteforce();
+            case '1':
+                printf("Bruteforcing\n\r");
+                start_bruteforce();
                 break;
-            case 2:
+            case '2':
                 //apply_ga();
                 break;
             default:

@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "graph.h"
 
 node_t create_node(void *data, int data_len)
