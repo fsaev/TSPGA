@@ -10,7 +10,7 @@ char *g_entries[30];
 int main(int argc, char *argv[])
 {
     printf("Hello\n\r");
-    if(!argv[1]){ return 1; }
+    if(argc < 2){ return 1; }
     if(open_csv(argv[1])){
         printf("File \"%s\" opened successfully\n\r", argv[1]);
     }else{
