@@ -3,11 +3,6 @@
 #include "graph.h"
 
 
-#ifdef TESTBENCH
-int graph_run_test(void){
-    return 0;
-}
-#endif
 
 node_t create_node(void *data, int data_len)
 {

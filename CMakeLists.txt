@@ -24,6 +24,7 @@ set (
    TEST_SOURCES
    ${SOURCES}
    ./src/testbench.c
+   ./src/graph_tb.c
 )
 
 include_directories(inc)

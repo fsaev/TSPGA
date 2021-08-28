@@ -18,9 +18,6 @@ struct node{
 };
 
 
-#ifdef TESTBENCH
-int graph_run_test();
-#endif
 
 node_t create_node(void *data, int data_len);
 int link_nodes(node_t* from, node_t* to, float distance);
