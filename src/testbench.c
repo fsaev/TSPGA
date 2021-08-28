@@ -14,9 +14,15 @@ int main(int argc, char **argv)
     exit(1);
   }
 
-  if(!strcmp(argv[1], "GRAPH")){
-    printf("Graph test\n");
-    if((code = graph_run_test()) == 0){
+  if(!strcmp(argv[1], "GRAPHLINK")){
+    printf("Graphlink test\n");
+
+    if(graph_init_test()){
+      printf("INITFAIL");
+      exit(1);
+    }
+
+    if((code = graph_link_test()) == 0){
       printf("SUCCESS\n");
     }else{
       printf("FAIL %d\n", code);

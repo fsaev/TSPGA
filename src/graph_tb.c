@@ -17,11 +17,12 @@ int graph_init_test(void){
 }
 
 int graph_link_test(void){
+
   float sum = 0;
   node_t *np;
 
-  link_nodes(&n1, &n2, 45.1);
-  link_nodes(&n2, &n3, 11.2);
+  link_nodes(&n1, &n2, 45.0);
+  link_nodes(&n2, &n3, 11.0);
 
   np = &n1;
 
@@ -30,9 +31,7 @@ int graph_link_test(void){
     np = np->links[0]->link;
   }
 
-  printf("Sum is %f\n", sum);
-
-  if(sum == 56.3){
+  if((int) sum == 56){
     return 0;
   }else{
     return 1;
