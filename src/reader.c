@@ -16,7 +16,7 @@ int line_csv(char **entries, int len) {
     char *tok = 0;
     int ecnt = 0;
 
-    if(fgets(buf, 1024, fp)){ //Get 
+    if(fgets(buf, 1024, fp)){ //Get
         tok = strtok(buf, ";");
 
         while(len-- && tok != NULL){ //Get each value
