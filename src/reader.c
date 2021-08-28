@@ -6,7 +6,7 @@ static FILE *fp;
 
 int open_csv(char *path) {
     fp = fopen(path, "r");
-    return (fp != NULL);
+    return (fp == NULL);
 }
 
 int line_csv(char **entries, int len) {
