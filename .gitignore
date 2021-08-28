@@ -53,6 +53,8 @@ dkms.conf
 
 #Folders
 build/
+CMakeFiles/
+.vscode/
 
 #Misc
 .directory
