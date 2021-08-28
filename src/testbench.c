@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "graph_tb.h"
+#include "reader_tb.h"
 
 int main(int argc, char **argv)
 {
@@ -27,8 +28,15 @@ int main(int argc, char **argv)
     }else{
       printf("FAIL %d\n", code);
     }
+
   } else if(!strcmp(argv[1], "CSVREADER")){
     printf("CSVREADER test\n");
+
+    if((code = reader_read_test()) == 0){
+      printf("SUCCESS\n");
+    }else{
+      printf("FAIL %d\n", code);
+    }
   }
 
 }
