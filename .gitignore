@@ -56,5 +56,8 @@ build/
 CMakeFiles/
 .vscode/
 
+#Environment
+*.code-workspace
+
 #Misc
 .directory
