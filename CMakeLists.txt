@@ -10,7 +10,7 @@ set (
    ./src/tsp.c
    ./src/interface.c
    ./src/bruteforce.c
-   ./src/permute.c
+   ./src/phenotype.c
    ./src/ga.c
 )
 
@@ -25,6 +25,7 @@ set (
    ${SOURCES}
    ./src/testbench.c
    ./src/graph_tb.c
+   ./src/reader_tb.c
 )
 
 include_directories(inc)
@@ -38,8 +39,18 @@ target_compile_definitions(tspga_tb PUBLIC TESTBENCH)
 
 include(CTest)
 enable_testing()
-add_test(graph_test tspga_tb "GRAPH")
-set_tests_properties(graph_test PROPERTIES PASS_REGULAR_EXPRESSION "SUCCESS")
+
+add_test(csv_test tspga_tb "CSVREADER")
+set_tests_properties(csv_test PROPERTIES PASS_REGULAR_EXPRESSION "SUCCESS")
+
+add_test(graphlink_test tspga_tb "GRAPHLINK")
+set_tests_properties(graphlink_test PROPERTIES PASS_REGULAR_EXPRESSION "SUCCESS")
+
+add_test(graphtraverse_test tspga_tb "GRAPHTRAVERSE")
+set_tests_properties(graphtraverse_test PROPERTIES PASS_REGULAR_EXPRESSION "SUCCESS")
+
+add_test(permutegenome_test tspga_tb "PERMUTEGENOME")
+set_tests_properties(permutegenome_test PROPERTIES PASS_REGULAR_EXPRESSION "SUCCESS")
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
