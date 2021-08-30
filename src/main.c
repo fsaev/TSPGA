@@ -12,8 +12,6 @@
 
 int main(int argc, char *argv[])
 {
-    char *g_entries[30];
-    graph_t tsp_graph;
 
     srand(time(NULL));
     start_bruteforce();
