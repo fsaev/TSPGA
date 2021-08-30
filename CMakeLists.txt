@@ -30,7 +30,7 @@ set (
 
 include_directories(inc)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3 -Wall -Wextra -pedantic -Og -std=c99")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3 -Wall -Wextra -pedantic -Og -std=c99 -pthread")
 
 add_executable(tspga ${BUILD_SOURCES})
 

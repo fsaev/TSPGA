@@ -21,7 +21,7 @@ int link_nodes(node_t *from, node_t *to, float distance) {
         v->distance = distance;
         from->links = realloc(from->links, sizeof(nvertex_t*) * (from->link_count + 1));
         from->links[from->link_count++] = v;
-        printf("Linked %s to %s with distance %2f\n\r", (char *) from->data, (char *) v->link->data, v->distance);
+        //printf("Linked %s to %s with distance %2f\n\r", (char *) from->data, (char *) v->link->data, v->distance);
         return 0;
 }
 

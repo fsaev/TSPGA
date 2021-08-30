@@ -7,5 +7,6 @@ typedef struct{
 } genome_t;
 
 int permute(int *a, int n);
+void shuffle(genome_t *g, int passes);
 
 #endif
