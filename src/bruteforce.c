@@ -58,7 +58,7 @@ void start_bruteforce()
       worker[w].genome.length = 23;
 
 
-      shuffle(&worker[w].genome, 8);
+      fisheryates_shuffle(worker[w].genome.sequence, worker[w].genome.length, 8);
 
       pthread_create(&tid[w], NULL, run_bruteforce, (void *) &worker[w]);
     }

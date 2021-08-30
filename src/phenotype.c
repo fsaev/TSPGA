@@ -33,17 +33,22 @@ int permute(int *a, int n) {
 #undef swap
 }
 
-void shuffle(genome_t *g, int passes){
-  int tmp;
-  int rand_pos;
-  for(int p = 0; p < passes; p++){
-    //printf("Pass %d\n", p);
-    for(int i = 0; i <= g->length; i++){
-      rand_pos = rand() % (g->length + 1);
-      tmp = g->sequence[i];
-      g->sequence[i] = g->sequence[rand_pos];
-      g->sequence[rand_pos] = tmp;
-      //printf("Swapping %d (%d) with %d (%d)\n", i, g->sequence[i], rand_pos, g->sequence[rand_pos]);
+void fisheryates_shuffle(int *array, int n, int passes) {
+
+  int i, j, tmp, upper_bound;
+  for(int p = 0; p < passes; p++) {
+    for (i = n - 1; i > 0; i--) {
+
+    upper_bound = RAND_MAX - ((RAND_MAX % (i + 1)) + 1);
+
+    do {
+      j = rand() % (i + 1);
+    } while (j > upper_bound);
+
+    tmp = array[j];
+    array[j] = array[i];
+    array[i] = tmp;
     }
   }
+
 }
