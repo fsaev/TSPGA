@@ -9,17 +9,21 @@ int open_csv(char *path) {
     return (fp == NULL);
 }
 
-int line_csv(char **entries, int len) {
-    if(!fp){ return -1; }
+char** line_csv(int *entries_read) {
+
+    char **entries = 0;
+    int ecnt = 0;
 
     char buf[1024];
     char *tok = 0;
-    int ecnt = 0;
+
+    if(!fp){ return entries; }
 
     if(fgets(buf, 1024, fp)){ //Get
         tok = strtok(buf, ";");
 
-        while(len-- && tok != NULL){ //Get each value
+        while(tok != NULL){ //Get each value
+            entries = realloc(entries, sizeof(char *) * (ecnt + 1));
             char *loc = 0;
             if((loc = strchr(tok, '\n'))){ //Look for any newline chars
                 *loc = '\0'; //Move termination to location
@@ -27,13 +31,17 @@ int line_csv(char **entries, int len) {
             if((loc = strchr(tok, '\r'))){ //Look for any CR chars
                 *loc = '\0'; //Move termination to location
             }
-            ecnt++;
-            *entries = malloc(sizeof(char) * strlen(tok));
-            strcpy(*entries++, tok);
+            entries[ecnt] = malloc(sizeof(char) * strlen(tok));
+            strcpy(entries[ecnt], tok);
             tok = strtok(NULL, ";");
+            ecnt++;
         }
     }
 
-    *entries = NULL; //NULL last entry
-    return ecnt;
+    if(entries){
+        entries[ecnt] = NULL; //NULL last entry
+    }
+
+    *entries_read = ecnt;
+    return entries;
 }

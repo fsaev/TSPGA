@@ -2,6 +2,5 @@
 #define READER_H
 
 int open_csv(char *path);
-int line_csv(char **entries, int len);
-
+char** line_csv(int *entries_read);
 #endif

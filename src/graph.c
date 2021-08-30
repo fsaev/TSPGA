@@ -33,6 +33,8 @@ void create_graph_nodes(graph_t *graph, char **data, int data_len) {
         graph->nodes[i] = malloc(sizeof(node_t)); //Allocate node
         graph->nodes[i]->data = data[i]; //Link content
         graph->nodes[i]->data_len = strlen(data[i]);
+        graph->nodes[i]->links = 0;
+        graph->nodes[i]->link_count = 0;
     }
 }
 

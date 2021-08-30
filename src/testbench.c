@@ -45,18 +45,19 @@ int main(int argc, char **argv)
     /*
      * Read Header
      */
-    int len = line_csv(g_entries, 30);
+    int len = 0;
+    char **entries = line_csv(&len);
     if(len){
-        create_graph_nodes(tsp_graph, g_entries, len);
+        create_graph_nodes(tsp_graph, entries, len);
     }
 
     /*
      * Read Data
      */
     int i = 0;
-    while((len = line_csv(g_entries, 30))){
+    while((entries = line_csv(&len))){
         if(len){
-            link_graph_node(tsp_graph, i++, g_entries, len);
+            link_graph_node(tsp_graph, i++, entries, len);
         }
     }
 
