@@ -26,6 +26,7 @@ set (
    ./src/testbench.c
    ./src/graph_tb.c
    ./src/reader_tb.c
+   ./src/ga_tb.c
 )
 
 include_directories(inc)
@@ -51,6 +52,9 @@ set_tests_properties(graphtraverse_test PROPERTIES PASS_REGULAR_EXPRESSION "SUCC
 
 add_test(permutegenome_test tspga_tb "PERMUTEGENOME")
 set_tests_properties(permutegenome_test PROPERTIES PASS_REGULAR_EXPRESSION "SUCCESS")
+
+add_test(gapmx_test tspga_tb "GAPMX")
+set_tests_properties(gapmx_test PROPERTIES PASS_REGULAR_EXPRESSION "SUCCESS")
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

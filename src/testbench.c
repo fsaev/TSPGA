@@ -5,11 +5,11 @@
 #include "reader_tb.h"
 #include "reader.h"
 #include "phenotype.h"
+#include "ga_tb.h"
 
 int main(int argc, char **argv)
 {
   int code = 0;
-  char *g_entries[30];
 
   printf("Running Testbench\n");
 
@@ -102,6 +102,11 @@ int main(int argc, char **argv)
     }else{
       printf("FAIL genome\n");
     }
+  } else if(!strcmp(argv[1], "GAPMX")){
+    if(!ga_pmx_test()){
+      printf("SUCCESS\n");
+    }else{
+      printf("FAIL PMX\n");
+    }
   }
-
 }
