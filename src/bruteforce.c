@@ -73,7 +73,7 @@ void *run_bruteforce(void *p){
     printf("Created thread %d\n", w->wid);
     float temp = 0;
     while(1){
-      if((temp = evaluate(&w->genome, &graph)) < best){
+      if((temp = tsp_evaluate(&w->genome, &graph)) < best){
         printf("wid: %d: New best %.2f\n", w->wid, temp);
         pthread_mutex_lock(&best_lock);
         n = graph.nodes[w->genome.sequence[0]];

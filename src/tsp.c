@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "tsp.h"
 
-float evaluate(genome_t *g, graph_t *gr){
+float tsp_evaluate(genome_t *g, graph_t *gr){
   float sum = 0;
 
   if(!g->length){ return 0; }
