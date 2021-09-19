@@ -250,12 +250,6 @@ int start_ga(const int threads, const int start_population) {
   return 0;
 }
 
-void *run_ga_master(void *p) {
-  //master_t *m = (master_t *) p;
-  printf("Starting master thread\n");
-  return 0;
-}
-
 void *run_ga_slave(void *p) {
   worker_t *w = (worker_t *) p;
   float fitness_sum = 0;
