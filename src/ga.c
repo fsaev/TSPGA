@@ -179,27 +179,6 @@ static void reproduce(individual_t *individuals, const int individuals_size, ind
   for(int s = 0; s < winners_size; s++){
     pmx_crossover(&winners[s]->genome, &winners[winners_size - s - 1]->genome, &individuals[individuals_size - s - 1].genome);
     invertion_mutate(&individuals[individuals_size - s - 1], MUTATION_FRACTION);
-    // printf("\nP1: [%d]: ", winner_pos[s]);
-    // for(int i = 0; i < 23; i++){
-    //   printf("%d ", winners[s]->genome.sequence[i]);
-    //   if(winners[s]->genome.sequence[i] == -1){
-    //     printf("HALT!\n");
-    //   }
-    // }
-    // printf("\n");
-    // printf("P2: [%d]: ", winner_pos[SELECTION_SIZE - s - 1]);
-    // for(int i = 0; i < 23; i++){
-    //   printf("%d ", winners[SELECTION_SIZE - s - 1]->genome.sequence[i]);
-    //   if(winners[s]->genome.sequence[SELECTION_SIZE - s - 1] == -1){
-    //     printf("HALT!\n");
-    //   }
-    // }
-    // printf("\n");
-    // printf("O1: [%d]: ", size - s - 1);
-    // for(int i = 0; i < 23; i++){
-    //   printf("%d ", individuals[size - s - 1].genome.sequence[i]);
-    // }
-    // printf("\n");
   }
 
 }
