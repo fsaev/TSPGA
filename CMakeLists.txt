@@ -8,7 +8,6 @@ set (
    ./src/reader.c
    ./src/graph.c
    ./src/tsp.c
-   ./src/interface.c
    ./src/bruteforce.c
    ./src/phenotype.c
    ./src/ga.c

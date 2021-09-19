@@ -1,40 +1,62 @@
-
-
 #include <time.h>
+#include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
 #include "ga.h"
 #include "reader.h"
+#include "tsp.h"
 
-/*
- * Genetric algorithms overview
- * Create a population of N individuals
- * Individuals has a genome describing sequence
- * Each new individual shall be unique
- * Make unique by shuffling with Fisher-Yates
- *
- * Iteration:
- * Evaluate each individuals' fitness
- * Do fitness proportionate selection
- *  Basically a roulette wheel with stronger
- *  individuals having more chances
- *  This will make sure that weak individuals
- *  have a chance of reproduction as well
- * With the surviving individuals, do PMX Crossover
-
-*/
+#define PMX_MINIMUM_SUBSTRING 3
+#define SHUFFLE_ITERATIONS 8
+#define ELITE_EXCHANGE_GEN 1000
+#define ELITE_EXCHANGE_PART 0.1 // 0.1 = 10%
+#define SELECTION_SIZE 10 //TODO assert this value
+#define MUTATION_FRACTION 8
 
 /* Shared data */
 static graph_t graph;
-static genome_t *individuals;
 
-void *run_ga(void *p);
+typedef struct{
+  int wid;
+  pthread_t thread;
 
-  #define PMX_MINIMUM_SUBSTRING 3
+  /* Must take care of concurrency */
+  int mgr_flags;
+  pthread_mutex_t mgr_flags_lock;
 
-static int recursive_positionize(genome_t *p1, genome_t *p2, genome_t *o1, int idx){
+  int generation;
+
+  individual_t *individuals;
+  int individuals_size;
+
+  individual_t *elites;
+  int elites_size;
+
+} worker_t;
+
+void *run_ga_master(void *p);
+void *run_ga_slave(void *p);
+
+static void invertion_mutate(individual_t *o, const int mutation_fraction) {
+  int substring_s, substring_e;
+  int tmp;
+
+  substring_s = rand() % (o->genome.length - (o->genome.length/mutation_fraction));
+  substring_e = substring_s + (o->genome.length/mutation_fraction);
+
+  for(int i = substring_s; i < substring_e; i++){
+    tmp = o->genome.sequence[i];
+    o->genome.sequence[i] = o->genome.sequence[substring_e - i - 1];
+    o->genome.sequence[substring_e - i - 1] = tmp;
+    if(i >= (substring_e - i - 1)){ //Quit half way
+      return;
+    }
+  }
+}
+
+static int recursive_positionize(const genome_t *p1, const genome_t *p2, genome_t *o1, const int idx){
   for(int i = 0; i <= p2->length; i++){
     if(p1->sequence[idx] == p2->sequence[i]){
       if(o1->sequence[i] == -1){
@@ -50,7 +72,7 @@ static int recursive_positionize(genome_t *p1, genome_t *p2, genome_t *o1, int i
   return -1;
 }
 
-void pmx_crossover(genome_t *p1, genome_t *p2, genome_t *o1) {
+void pmx_crossover(const genome_t *p1, const genome_t *p2, genome_t *o1) {
   int substring_s, substring_e;
 
   /* Random end between 3 and n */
@@ -76,7 +98,10 @@ void pmx_crossover(genome_t *p1, genome_t *p2, genome_t *o1) {
     }
 
     if(match_at == -1){ //If it's unique and needs repositioning
-        o1->sequence[recursive_positionize(p1, p2, o1, p2_idx)] = p2->sequence[p2_idx];
+      int pos = recursive_positionize(p1, p2, o1, p2_idx);
+      if(pos != -1){
+        o1->sequence[pos] = p2->sequence[p2_idx];
+      }
     }
   }
 
@@ -88,33 +113,99 @@ void pmx_crossover(genome_t *p1, genome_t *p2, genome_t *o1) {
   }
 }
 
-static void evaluate(genome_t *g)
+static float evaluate(individual_t *individuals, const int size){
+  float fitness_sum = 0;
+
+  /* Evaluate */
+  for(int i = 0; i < size; i++){
+    individual_t *n = &individuals[i];
+    n->fitness = tsp_evaluate(&n->genome, &graph);
+    fitness_sum += n->fitness;
+  }
+
+  return fitness_sum;
+}
+
+/* Qsort comparison function */
+static int cmpfunc (const void *a, const void *b){
+  const individual_t *ia = (individual_t *) a;
+  const individual_t *ib = (individual_t *) b;
+  return (int) ( ia->fitness - ib->fitness );
+}
+
+static void select(individual_t *individuals, const int individuals_size, individual_t **winners, const int winners_size, const float fitness_sum){
+  float prev_probability = 0;
+  double winning_no[winners_size];
+
+  /* Fitness Proportionate Selection */
+  qsort(individuals, individuals_size, sizeof(individual_t), cmpfunc);
+
+  /* Prepare winning numbers */
+  for(int i = 0; i < winners_size; i++){
+    winning_no[i] = (double)rand() / (double)RAND_MAX;
+
+    /*Set initial winner to best individual */
+    winners[i] = &individuals[0];
+  }
+
+  /* Do the raffle */
+  for(int i = 0; i < individuals_size - winners_size; i++){ //For every individual except the weakest
+    individual_t *n = &individuals[i];
+    n->s_prob = prev_probability + (n->fitness/fitness_sum);
+
+    /* Also evaluate if individual is selected, yay NP-completeness */
+    for(int s = 0; s < winners_size; s++){
+      if(winning_no[s] > n->s_prob){
+        winners[s] = n;
+      }
+    }
+
+    prev_probability = n->s_prob;
+  }
+}
+
+static void reproduce(individual_t *individuals, const int individuals_size, individual_t **winners, const int winners_size)
 {
-  // for (int i = 0; i < individuals->; i++)
-  // {
-  //   /* code */
-  // }
+
+
+  /*
+   * Reproduction
+   * This will wipe the weakest individuals
+   * with the offspring of the selected individuals
+   *
+   * Select parents on each of the extremes of the selection group
+   * Replace the individuals from the bottom and up
+   */
+  for(int s = 0; s < winners_size; s++){
+    pmx_crossover(&winners[s]->genome, &winners[winners_size - s - 1]->genome, &individuals[individuals_size - s - 1].genome);
+    invertion_mutate(&individuals[individuals_size - s - 1], MUTATION_FRACTION);
+    // printf("\nP1: [%d]: ", winner_pos[s]);
+    // for(int i = 0; i < 23; i++){
+    //   printf("%d ", winners[s]->genome.sequence[i]);
+    //   if(winners[s]->genome.sequence[i] == -1){
+    //     printf("HALT!\n");
+    //   }
+    // }
+    // printf("\n");
+    // printf("P2: [%d]: ", winner_pos[SELECTION_SIZE - s - 1]);
+    // for(int i = 0; i < 23; i++){
+    //   printf("%d ", winners[SELECTION_SIZE - s - 1]->genome.sequence[i]);
+    //   if(winners[s]->genome.sequence[SELECTION_SIZE - s - 1] == -1){
+    //     printf("HALT!\n");
+    //   }
+    // }
+    // printf("\n");
+    // printf("O1: [%d]: ", size - s - 1);
+    // for(int i = 0; i < 23; i++){
+    //   printf("%d ", individuals[size - s - 1].genome.sequence[i]);
+    // }
+    // printf("\n");
+  }
 
 }
 
-static void select(genome_t *g)
-{
-
-}
-
-static void reproduce(genome_t *g)
-{
-
-}
-
-int ga_process_cycle(void *argp)
-{
-
-}
-
-int start_ga(int threads, int start_population) {
-  pthread_t tid[threads];
-  //worker_t worker[threads];
+int start_ga(const int threads, const int start_population) {
+  worker_t worker[threads];
 
   if(open_csv("../assets/european_cities.csv")){
     printf("INITFAIL");
@@ -140,26 +231,70 @@ int start_ga(int threads, int start_population) {
       }
   }
 
-  individuals = malloc(sizeof(genome_t) * start_population);
+  printf("Spawning %d threads with %d individuals each and %d elites\n",
+          threads, start_population/threads, (int) ((start_population/threads)*ELITE_EXCHANGE_PART));
 
-  for(int i = 0; i < start_population; i++){
-    individuals[i].sequence = malloc(sizeof(int) * 23);
-    individuals[i].length = 23;
-    for(int n = 0; n < 24; n++){
-      individuals[i].sequence[n] = n;
+  /* Set up workers */
+  for(int i = 0; i < threads; i++){
+    worker_t* w = &worker[i];
+    w->wid = i;
+    w->mgr_flags = 0;
+    pthread_mutex_init(&w->mgr_flags_lock, NULL);
+    w->generation = 0;
+    w->individuals_size = start_population/threads; //Only allocate an even share
+    printf("Allocating %d individuals\n", w->individuals_size);
+    w->individuals = malloc(sizeof(individual_t) * w->individuals_size);
+    w->elites_size = (int) (w->individuals_size*ELITE_EXCHANGE_PART);
+    w->elites = malloc(sizeof(individual_t) * w->elites_size);
+    for(int g = 0; g < w->individuals_size; g++){
+      genome_t *genome = &w->individuals[g].genome;
+      genome->sequence = malloc(sizeof(int) * 23);
+      genome->length = 23;
+      for(int n = 0; n <= 23; n++){
+        genome->sequence[n] = n;
+      }
+      fisheryates_shuffle(genome->sequence, genome->length, SHUFFLE_ITERATIONS);
     }
-    fisheryates_shuffle(individuals[i].sequence, individuals[i].length, 8);
+
+    pthread_create(&worker[i].thread, NULL, run_ga_slave, (void *) &worker[i]);
   }
 
-  genome_t *o1 = malloc(sizeof(genome_t));
-
-  o1->sequence = malloc(sizeof(int) * 23);
-  o1->length = 23;
-  pmx_crossover(&individuals[0], &individuals[1], o1);
+  /*
+   * The threads will probably never end
+   * (We are working on the traveling salesman problem here, not the halting problem)
+   * But we keep the join functions just to be nice and orderly, and also to keep
+   * the main thread from exiting.
+   */
+  for(int i = 0; i < threads; i++){
+    pthread_join(worker[i].thread, NULL);
+  }
 
   return 0;
 }
 
-void *run_ga(void *p) {
+void *run_ga_master(void *p) {
+  //master_t *m = (master_t *) p;
+  printf("Starting master thread\n");
+  return 0;
+}
 
+void *run_ga_slave(void *p) {
+  worker_t *w = (worker_t *) p;
+  float fitness_sum = 0;
+  individual_t *winners[SELECTION_SIZE];
+  //float prev_best = FLT_MAX;
+
+  printf("Starting worker thread %d\n", w->wid);
+  while(1){
+    w->generation++; //increment generation
+    //printf("Generation: %d\n", w->generation);
+    fitness_sum = evaluate(w->individuals, w->individuals_size);
+    // if(w->individuals[0].fitness < prev_best){
+    //   printf("Best individual is %.2f\n", w->individuals[0].fitness);
+    //   prev_best = w->individuals[0].fitness;
+    // }
+    select(w->individuals, w->individuals_size, winners, SELECTION_SIZE, fitness_sum);
+    reproduce(w->individuals, w->individuals_size, winners, SELECTION_SIZE);
+  }
+  return 0;
 }
