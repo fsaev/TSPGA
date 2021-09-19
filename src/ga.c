@@ -36,6 +36,16 @@ typedef struct{
 
 } worker_t;
 
+typedef struct{
+  worker_t *workers;
+  int worker_count;
+
+  individual_t *best_individual;
+
+  individual_t *elites;
+  int elites_size;
+} master_t;
+
 void *run_ga_master(void *p);
 void *run_ga_slave(void *p);
 
