@@ -166,8 +166,6 @@ static void select(individual_t *individuals, const int individuals_size, indivi
 
 static void reproduce(individual_t *individuals, const int individuals_size, individual_t **winners, const int winners_size)
 {
-
-
   /*
    * Reproduction
    * This will wipe the weakest individuals
@@ -176,6 +174,7 @@ static void reproduce(individual_t *individuals, const int individuals_size, ind
    * Select parents on each of the extremes of the selection group
    * Replace the individuals from the bottom and up
    */
+
   for(int s = 0; s < winners_size; s++){
     pmx_crossover(&winners[s]->genome, &winners[winners_size - s - 1]->genome, &individuals[individuals_size - s - 1].genome);
     invertion_mutate(&individuals[individuals_size - s - 1], MUTATION_FRACTION);
