@@ -1,7 +1,10 @@
+#define _DEFAULT_SOURCE
+
 #include <time.h>
 #include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <pthread.h>
 #include "ga.h"
@@ -10,8 +13,6 @@
 
 #define PMX_MINIMUM_SUBSTRING 3
 #define SHUFFLE_ITERATIONS 8
-#define ELITE_EXCHANGE_GEN 1000
-#define ELITE_EXCHANGE_PART 0.1 // 0.1 = 10%
 #define SELECTION_SIZE 10 //TODO assert this value
 #define MUTATION_FRACTION 8
 
@@ -23,30 +24,17 @@ typedef struct{
   pthread_t thread;
 
   /* Must take care of concurrency */
-  int mgr_flags;
-  pthread_mutex_t mgr_flags_lock;
+  int best_fitness_generation;
+  individual_t *best_fitness_individual;
+  pthread_mutex_t best_fitness_lock;
 
   int generation;
 
   individual_t *individuals;
   int individuals_size;
-
-  individual_t *elites;
-  int elites_size;
-
 } worker_t;
 
-typedef struct{
-  worker_t *workers;
-  int worker_count;
-
-  individual_t *best_individual;
-
-  individual_t *elites;
-  int elites_size;
-} master_t;
-
-void *run_ga_master(void *p);
+void enter_master_loop(worker_t *worker, const int worker_count);
 void *run_ga_slave(void *p);
 
 static void invertion_mutate(individual_t *o, const int mutation_fraction) {
@@ -123,7 +111,7 @@ void pmx_crossover(const genome_t *p1, const genome_t *p2, genome_t *o1) {
   }
 }
 
-static float evaluate(individual_t *individuals, const int size){
+static float ga_evaluate(individual_t *individuals, const int size){
   float fitness_sum = 0;
 
   /* Evaluate */
@@ -143,7 +131,7 @@ static int cmpfunc (const void *a, const void *b){
   return (int) ( ia->fitness - ib->fitness );
 }
 
-static void select(individual_t *individuals, const int individuals_size, individual_t **winners, const int winners_size, const float fitness_sum){
+static void ga_select(individual_t *individuals, const int individuals_size, individual_t **winners, const int winners_size, const float fitness_sum){
   float prev_probability = 0;
   double winning_no[winners_size];
 
@@ -174,7 +162,7 @@ static void select(individual_t *individuals, const int individuals_size, indivi
   }
 }
 
-static void reproduce(individual_t *individuals, const int individuals_size, individual_t **winners, const int winners_size)
+static void ga_reproduce(individual_t *individuals, const int individuals_size, individual_t **winners, const int winners_size)
 {
   /*
    * Reproduction
@@ -219,21 +207,18 @@ int start_ga(const int threads, const int start_population) {
       }
   }
 
-  printf("Spawning %d threads with %d individuals each and %d elites\n",
-          threads, start_population/threads, (int) ((start_population/threads)*ELITE_EXCHANGE_PART));
+  printf("Spawning %d threads with %d individuals each\n",
+          threads, start_population/threads);
 
   /* Set up workers */
   for(int i = 0; i < threads; i++){
     worker_t* w = &worker[i];
     w->wid = i;
-    w->mgr_flags = 0;
-    pthread_mutex_init(&w->mgr_flags_lock, NULL);
     w->generation = 0;
     w->individuals_size = start_population/threads; //Only allocate an even share
     printf("Allocating %d individuals\n", w->individuals_size);
     w->individuals = malloc(sizeof(individual_t) * w->individuals_size);
-    w->elites_size = (int) (w->individuals_size*ELITE_EXCHANGE_PART);
-    w->elites = malloc(sizeof(individual_t) * w->elites_size);
+
     for(int g = 0; g < w->individuals_size; g++){
       genome_t *genome = &w->individuals[g].genome;
       genome->sequence = malloc(sizeof(int) * 23);
@@ -244,39 +229,73 @@ int start_ga(const int threads, const int start_population) {
       fisheryates_shuffle(genome->sequence, genome->length, SHUFFLE_ITERATIONS);
     }
 
+    w->best_fitness_individual = &w->individuals[0];
+    pthread_mutex_init(&w->best_fitness_lock, NULL);
     pthread_create(&worker[i].thread, NULL, run_ga_slave, (void *) &worker[i]);
   }
 
+  enter_master_loop(worker, threads);
+
+  return 0;
+}
+
+void enter_master_loop(worker_t *worker, const int worker_count){
+  float best_fitness = FLT_MAX;
+  individual_t *best_individual;
+
+  while(1){
+    for(int i = 0; i < worker_count; i++){
+      if(worker[i].generation == 0){ continue; } //Skip first generation
+
+      pthread_mutex_lock(&worker[i].best_fitness_lock);
+      best_individual = worker[i].best_fitness_individual;
+
+      if(best_individual->fitness < best_fitness){
+        best_fitness = best_individual->fitness;
+        printf("Best fitness: %f (wid: %d, g: %d)\n",
+            best_fitness, i, worker[i].best_fitness_generation);
+        for(int n = 0; n < best_individual->genome.length; n++){
+          int seq_no = best_individual->genome.sequence[n];
+          if(n != (best_individual->genome.length - 1)){
+            printf("[%s]->", (char *) graph.nodes[seq_no]->data);
+          }else{
+            printf("[%s]\n\n", (char *) graph.nodes[seq_no]->data);
+          }
+        }
+      }
+      pthread_mutex_unlock(&worker[i].best_fitness_lock);
+
+    }
+    usleep(100); //Slow down master thread
+  }
   /*
    * The threads will probably never end
    * (We are working on the traveling salesman problem here, not the halting problem)
    * But we keep the join functions just to be nice and orderly, and also to keep
    * the main thread from exiting.
    */
-  for(int i = 0; i < threads; i++){
+  for(int i = 0; i < worker_count; i++){
     pthread_join(worker[i].thread, NULL);
   }
-
-  return 0;
 }
 
 void *run_ga_slave(void *p) {
   worker_t *w = (worker_t *) p;
   float fitness_sum = 0;
   individual_t *winners[SELECTION_SIZE];
-  //float prev_best = FLT_MAX;
 
   printf("Starting worker thread %d\n", w->wid);
   while(1){
     w->generation++; //increment generation
-    //printf("Generation: %d\n", w->generation);
-    fitness_sum = evaluate(w->individuals, w->individuals_size);
-    // if(w->individuals[0].fitness < prev_best){
-    //   printf("Best individual is %.2f\n", w->individuals[0].fitness);
-    //   prev_best = w->individuals[0].fitness;
-    // }
-    select(w->individuals, w->individuals_size, winners, SELECTION_SIZE, fitness_sum);
-    reproduce(w->individuals, w->individuals_size, winners, SELECTION_SIZE);
+    fitness_sum = ga_evaluate(w->individuals, w->individuals_size);
+    ga_select(w->individuals, w->individuals_size, winners, SELECTION_SIZE, fitness_sum);
+
+    pthread_mutex_lock(&w->best_fitness_lock);
+    w->best_fitness_individual = &w->individuals[0];
+    w->best_fitness_generation = w->generation;
+    pthread_mutex_unlock(&w->best_fitness_lock);
+
+    ga_reproduce(w->individuals, w->individuals_size, winners, SELECTION_SIZE);
   }
   return 0;
 }
