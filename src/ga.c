@@ -16,9 +16,6 @@
 #define SELECTION_SIZE 10 //TODO assert this value
 #define MUTATION_FRACTION 8
 
-/* Shared data */
-static graph_t graph;
-
 typedef struct{
   int wid;
   pthread_t thread;
@@ -34,9 +31,14 @@ typedef struct{
   int individuals_size;
 } worker_t;
 
+/* Shared data */
+static graph_t graph;
+
+/* Static function prototypes */
 void enter_master_loop(worker_t *worker, const int worker_count);
 void *run_ga_slave(void *p);
 
+/* Reverses a random fraction of the genome */
 static void invertion_mutate(individual_t *o, const int mutation_fraction) {
   int substring_s, substring_e;
   int tmp;
@@ -54,6 +56,7 @@ static void invertion_mutate(individual_t *o, const int mutation_fraction) {
   }
 }
 
+/* Recursive helper function for the PMX crossover */
 static int recursive_positionize(const genome_t *p1, const genome_t *p2, genome_t *o1, const int idx){
   for(int i = 0; i <= p2->length; i++){
     if(p1->sequence[idx] == p2->sequence[i]){
@@ -70,6 +73,10 @@ static int recursive_positionize(const genome_t *p1, const genome_t *p2, genome_
   return -1;
 }
 
+/*
+ * Merges two individuals into one by taking a section from each
+ * then repositioning the genomes that are duplicated
+ */
 void pmx_crossover(const genome_t *p1, const genome_t *p2, genome_t *o1) {
   int substring_s, substring_e;
 
@@ -111,6 +118,11 @@ void pmx_crossover(const genome_t *p1, const genome_t *p2, genome_t *o1) {
   }
 }
 
+/*
+ * Evaluation function
+ * Iterates each individual, traverses the chain
+ * then assigns a fitness based on the total length
+ */
 static float ga_evaluate(individual_t *individuals, const int size){
   float fitness_sum = 0;
 
@@ -131,11 +143,15 @@ static int cmpfunc (const void *a, const void *b){
   return (int) ( ia->fitness - ib->fitness );
 }
 
+/*
+ * Selection function
+ * Fitness proportionate selection with higher fitness meaning
+ * higher probability of being selected
+ */
 static void ga_select(individual_t *individuals, const int individuals_size, individual_t **winners, const int winners_size, const float fitness_sum){
   float prev_probability = 0;
   double winning_no[winners_size];
 
-  /* Fitness Proportionate Selection */
   qsort(individuals, individuals_size, sizeof(individual_t), cmpfunc);
 
   /* Prepare winning numbers */
@@ -162,24 +178,30 @@ static void ga_select(individual_t *individuals, const int individuals_size, ind
   }
 }
 
+/*
+ * Reproduction function
+ * Wipes the weakest individuals
+ * with the offspring of the selected individuals
+ *
+ * Select parents on each of the extremes of the selection group
+ * Replace the individuals from the bottom and up
+ *
+ * Uses PMX crossover to create the offspring, then applies
+ * inversion mutation to introduce some randomness into the
+ * gene pool
+ */
 static void ga_reproduce(individual_t *individuals, const int individuals_size, individual_t **winners, const int winners_size)
 {
-  /*
-   * Reproduction
-   * This will wipe the weakest individuals
-   * with the offspring of the selected individuals
-   *
-   * Select parents on each of the extremes of the selection group
-   * Replace the individuals from the bottom and up
-   */
-
   for(int s = 0; s < winners_size; s++){
     pmx_crossover(&winners[s]->genome, &winners[winners_size - s - 1]->genome, &individuals[individuals_size - s - 1].genome);
     invertion_mutate(&individuals[individuals_size - s - 1], MUTATION_FRACTION);
   }
-
 }
 
+/*
+ * Entry function
+ * Prepares data
+ */
 int start_ga(const int threads, const int start_population) {
   worker_t worker[threads];
 
@@ -239,6 +261,11 @@ int start_ga(const int threads, const int start_population) {
   return 0;
 }
 
+/*
+ * Master loop for the main thread
+ * Gathers the best result from each worker
+ * every 100 milliseconds
+ */
 void enter_master_loop(worker_t *worker, const int worker_count){
   float best_fitness = FLT_MAX;
   individual_t *best_individual;
@@ -268,6 +295,7 @@ void enter_master_loop(worker_t *worker, const int worker_count){
     }
     usleep(100); //Slow down master thread
   }
+
   /*
    * The threads will probably never end
    * (We are working on the traveling salesman problem here, not the halting problem)
@@ -279,6 +307,11 @@ void enter_master_loop(worker_t *worker, const int worker_count){
   }
 }
 
+/*
+ * Worker thread
+ * pthread instance that keeps it's own
+ * set of data, but reads the same graph
+ */
 void *run_ga_slave(void *p) {
   worker_t *w = (worker_t *) p;
   float fitness_sum = 0;
